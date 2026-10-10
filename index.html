@@ -24,10 +24,22 @@
     .upload-status.uploading { color: #fa8c16; }
     .upload-status.success { color: #52c41a; }
     .upload-status.error { color: #f5222d; }
+    
+    /* 企微二維碼頁面樣式 */
+    .wecom-page { text-align: center; padding: 20px; }
+    .wecom-page h2 { color: #52c41a; margin-bottom: 10px; }
+    .wecom-page .subtitle { color: #666; font-size: 14px; margin-bottom: 20px; }
+    .qr-container { background: #f6ffed; border: 2px solid #b7eb8f; border-radius: 8px; padding: 20px; margin: 20px 0; }
+    .qr-container img { max-width: 200px; width: 100%; border-radius: 4px; }
+    .qr-tip { color: #fa8c16; font-size: 14px; font-weight: bold; margin-top: 15px; }
+    .qr-instruction { color: #666; font-size: 13px; margin-top: 10px; line-height: 1.6; }
+    .next-step { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
+    .next-step p { color: #666; font-size: 14px; }
   </style>
 </head>
 <body>
   <div id="app">
+    <!-- 報名表單頁面 -->
     <div class="container" v-if="!submitted">
       <h2>專送騎手入職報名</h2>
       
@@ -119,9 +131,30 @@
       </form>
     </div>
 
-    <div class="container success" v-if="submitted">
-       報名成功！<br>
-      <span style="font-size: 14px; color: #666; font-weight: normal;">請等待站長審核通知。</span>
+    <!-- 報名成功 + 企微二維碼頁面 -->
+    <div class="container wecom-page" v-if="submitted">
+      <h2>🎉 報名提交成功！</h2>
+      <p class="subtitle">請立即掃描下方二維碼，添加站長企業微信</p>
+      
+      <div class="qr-container">
+        <!-- ⚠️ 請替換為你的真實站長企微二維碼圖片 URL -->
+        <img src="https://sxeumofpvoicgdfumozn.supabase.co/storage/v1/object/public/qrcodes/din_wechat.jpg" alt="站長企業微信二維碼">
+        <div class="qr-tip">⚠️ 請長按識別二維碼添加站長</div>
+        <div class="qr-instruction">
+          添加後，請發送您的<strong>姓名</strong>給站長，<br>
+          以便站長核對您的報名信息。
+        </div>
+      </div>
+
+      <div class="next-step">
+        <p><strong>下一步：</strong></p>
+        <p>1. 添加站長企業微信（上方二維碼）</p>
+        <p>2. 等待站長審核您的報名資料</p>
+        <p>3. 審核通過後，站長會發送培訓通知給您</p>
+        <p style="color: #999; font-size: 12px; margin-top: 20px;">
+          如已添加站長，可關閉此頁面。
+        </p>
+      </div>
     </div>
   </div>
 
@@ -130,7 +163,8 @@
     
     // ⚠️ 請務必替換為你的真實 URL 和 KEY
     const supabaseUrl = 'https://sxeumofpvoicgdfumozn.supabase.co'; 
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZXVtb2Zwdm9pY2dkZnVtb3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MjI0MDEsImV4cCI6MjEwNzE5ODQwMX0.BMSIbaFzJkvwDzomjKqIdcfDBLNqntYvTHyBiCnTphw';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZXVtb2Zwdm9pY2dkZnVtb3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MjI0MDEsImV4cCI6MjEwNzE5ODQwMX0.BMSIbaFzJkvwDzomjKqIdcfDBLNqntYvTHyBiCnTphw
+';
     const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
     createApp({
@@ -216,8 +250,7 @@
               work_type: form.work_type,
               id_number: form.id_number,
               vehicle_plate: form.vehicle_plate,
-              // 🌟 關鍵修改：自動填入默認值，解決數據庫報錯，並提醒管理員
-              bank_account: '見銀行證明照片', 
+              bank_account: '見銀行證明照片',
               status: 'PENDING',
               id_card_front_url: fileUrls.id_card_front,
               id_card_back_url: fileUrls.id_card_back,
