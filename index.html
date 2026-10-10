@@ -14,16 +14,16 @@
     .form-group { margin-bottom: 15px; }
     label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
     .sub-label { font-size: 12px; color: #f5222d; font-weight: normal; }
+    .tip-label { font-size: 12px; color: #1890ff; font-weight: normal; display: block; margin-top: 3px; line-height: 1.5;}
     input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
     .file-input { margin-top: 5px; font-size: 14px; }
     .btn { width: 100%; padding: 12px; background: #1890ff; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 10px; }
     .btn:disabled { background: #ccc; }
     .success { text-align: center; color: #52c41a; font-size: 18px; font-weight: bold; padding: 40px 0; }
-    .upload-status { font-size: 12px; margin-top: 2px; }
+    .upload-status { font-size: 12px; margin-top: 2px; min-height: 18px;}
     .upload-status.uploading { color: #fa8c16; }
     .upload-status.success { color: #52c41a; }
     .upload-status.error { color: #f5222d; }
-    .debug-box { margin-top: 30px; padding: 10px; background: #fffbe6; border: 1px solid #ffe58f; border-radius: 4px; font-size: 12px; color: #d46b08; word-break: break-all;}
   </style>
 </head>
 <body>
@@ -65,65 +65,57 @@
           <label>電單車車牌號碼 *</label>
           <input v-model="form.vehicle_plate" required>
         </div>
-        <div class="form-group">
-          <label>工商銀行帳號 (0119開頭19位) *</label>
-          <input v-model="form.bank_account" maxlength="19" required>
-        </div>
 
-        <h3>證件上傳</h3>
+        <h3>證件上傳 <span style="font-size:12px; color:#666; font-weight:normal;">(選中後自動上傳，請耐心等待綠色對勾)</span></h3>
         
-        <!-- 文件上傳區 - 每個都有獨立狀態 -->
         <div class="form-group">
           <label>身份證正面 *</label>
-          <input type="file" accept="image/*" @change="(e) => handleFileSelect(e, 'id_card_front')" class="file-input">
+          <input type="file" accept="image/*" @change="(e) => handleFileUpload(e, 'id_card_front')" class="file-input">
           <div class="upload-status" :class="uploadStatus.id_card_front?.class">{{ uploadStatus.id_card_front?.text }}</div>
         </div>
         
         <div class="form-group">
           <label>身份證背面 *</label>
-          <input type="file" accept="image/*" @change="(e) => handleFileSelect(e, 'id_card_back')" class="file-input">
+          <input type="file" accept="image/*" @change="(e) => handleFileUpload(e, 'id_card_back')" class="file-input">
           <div class="upload-status" :class="uploadStatus.id_card_back?.class">{{ uploadStatus.id_card_back?.text }}</div>
         </div>
         
         <div class="form-group">
           <label>駕駛執照正面 *</label>
-          <input type="file" accept="image/*" @change="(e) => handleFileSelect(e, 'license_front')" class="file-input">
+          <input type="file" accept="image/*" @change="(e) => handleFileUpload(e, 'license_front')" class="file-input">
           <div class="upload-status" :class="uploadStatus.license_front?.class">{{ uploadStatus.license_front?.text }}</div>
         </div>
         
         <div class="form-group">
           <label>駕駛執照背面 *</label>
-          <input type="file" accept="image/*" @change="(e) => handleFileSelect(e, 'license_back')" class="file-input">
+          <input type="file" accept="image/*" @change="(e) => handleFileUpload(e, 'license_back')" class="file-input">
           <div class="upload-status" :class="uploadStatus.license_back?.class">{{ uploadStatus.license_back?.text }}</div>
         </div>
         
         <div class="form-group">
           <label>個人正面免冠照 * <span class="sub-label">(點擊後將打開前置攝像頭，請現場拍攝)</span></label>
-          <input type="file" accept="image/*" capture="user" @change="(e) => handleFileSelect(e, 'front_photo')" class="file-input">
+          <input type="file" accept="image/*" capture="user" @change="(e) => handleFileUpload(e, 'front_photo')" class="file-input">
           <div class="upload-status" :class="uploadStatus.front_photo?.class">{{ uploadStatus.front_photo?.text }}</div>
         </div>
 
         <div class="form-group">
           <label>銀行帳號證明 *</label>
-          <input type="file" accept="image/*" @change="(e) => handleFileSelect(e, 'bank_proof')" class="file-input">
+          <span class="tip-label"> 教學：登入網上銀行 ＞ 搜索「賬戶證明」＞ 選擇葡幣賬號 ＞ 保存照片後上傳</span>
+          <input type="file" accept="image/*" @change="(e) => handleFileUpload(e, 'bank_proof')" class="file-input">
           <div class="upload-status" :class="uploadStatus.bank_proof?.class">{{ uploadStatus.bank_proof?.text }}</div>
         </div>
 
-        <h3 style="color: #f5222d;">防代培核身</h3>
+        <h3 style="color: #f5222d;">防代培核身 <span style="font-size:12px; color:#666; font-weight:normal;">(建議視頻控制在 10 秒內)</span></h3>
         
         <div class="form-group">
           <label>核身視頻 * <span class="sub-label">(請正面對鏡頭，說出個人姓名)</span></label>
-          <input type="file" accept="video/*" capture="user" @change="(e) => handleFileSelect(e, 'verification_video')" class="file-input">
+          <input type="file" accept="video/*" capture="user" @change="(e) => handleFileUpload(e, 'verification_video')" class="file-input">
           <div class="upload-status" :class="uploadStatus.verification_video?.class">{{ uploadStatus.verification_video?.text }}</div>
         </div>
 
-        <button type="submit" class="btn" :disabled="loading || isUploading">
-          {{ loading ? '提交數據中...' : (isUploading ? '文件上傳中...' : '提交報名') }}
+        <button type="submit" class="btn" :disabled="loading || hasUploading">
+          {{ loading ? '提交數據中...' : (hasUploading ? '文件上傳中，請稍後...' : '提交報名') }}
         </button>
-        
-        <div v-if="uploadProgress" style="margin-top: 10px; font-size: 12px; color: #666; text-align: center;">
-          上傳進度：{{ uploadedCount }} / {{ totalFiles }}
-        </div>
       </form>
     </div>
 
@@ -134,7 +126,7 @@
   </div>
 
   <script>
-    const { createApp, reactive, ref, onMounted } = Vue;
+    const { createApp, reactive, ref, onMounted, computed } = Vue;
     
     // ⚠️ 請務必替換為你的真實 URL 和 KEY
     const supabaseUrl = 'https://sxeumofpvoicgdfumozn.supabase.co'; 
@@ -143,13 +135,10 @@
 
     createApp({
       setup() {
-        const form = reactive({ name: '', phone: '', station: '', work_type: '', id_number: '', vehicle_plate: '', bank_account: '' });
+        const form = reactive({ name: '', phone: '', station: '', work_type: '', id_number: '', vehicle_plate: '' });
         const stations = ref([]);
         const loading = ref(false);
-        const isUploading = ref(false);
         const submitted = ref(false);
-        const uploadedCount = ref(0);
-        const totalFiles = 7; // 總共7個文件
         
         const fileUrls = reactive({
           id_card_front: '', id_card_back: '', license_front: '', license_back: '',
@@ -166,100 +155,60 @@
           verification_video: { text: '', class: '' }
         });
 
-        const pendingFiles = ref({});
+        const hasUploading = computed(() => {
+          return Object.values(uploadStatus).some(s => s.class === 'uploading');
+        });
 
         onMounted(async () => {
-          if (supabaseUrl.includes('請替換')) {
-            alert('錯誤：請先去 GitHub 代碼裡把 supabaseUrl 和 supabaseKey 替換成真實值！');
+          if (supabaseUrl.includes('請替換')) return;
+          const { data, error } = await supabase.from('stations').select('id, name').eq('status', 'ACTIVE');
+          if (!error) stations.value = data;
+        });
+
+        const handleFileUpload = async (event, key) => {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          const maxSize = key === 'verification_video' ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
+          if (file.size > maxSize) {
+            uploadStatus[key] = { text: `❌ 文件太大 (最大 ${(maxSize/1024/1024)}MB)`, class: 'error' };
             return;
           }
 
-          console.log('開始加載站點...');
-          const { data, error } = await supabase.from('stations').select('id, name').eq('status', 'ACTIVE');
-          
-          if (error) {
-            console.error('加載站點失敗:', error);
-            alert('數據庫連接失敗：' + error.message);
-          } else {
-            stations.value = data;
-            console.log('站點加載成功:', data);
-          }
-        });
+          uploadStatus[key] = { text: '⏳ 上傳中，請耐心等待...', class: 'uploading' };
+          fileUrls[key] = '';
 
-        // 只記錄選擇的文件，不立即上傳
-        const handleFileSelect = (event, key) => {
-          const file = event.target.files[0];
-          if (file) {
-            pendingFiles.value[key] = file;
-            uploadStatus[key] = { text: '✅ 已選擇: ' + file.name, class: 'success' };
-          }
-        };
+          try {
+            const fileName = `${Date.now()}_${key}_${file.name.replace(/\s+/g, '_')}`;
+            const { data, error } = await supabase.storage
+              .from('rider-files')
+              .upload(fileName, file, { cacheControl: '3600', upsert: false });
 
-        // 串行上傳所有文件
-        const uploadAllFiles = async () => {
-          isUploading.value = true;
-          uploadedCount.value = 0;
-          
-          const keys = Object.keys(pendingFiles.value);
-          
-          for (let i = 0; i < keys.length; i++) {
-            const key = keys[i];
-            const file = pendingFiles.value[key];
+            if (error) throw error;
             
-            if (!file) continue;
+            const { data: { publicUrl } } = supabase.storage.from('rider-files').getPublicUrl(fileName);
+            fileUrls[key] = publicUrl;
+            uploadStatus[key] = { text: '✅ 上傳成功', class: 'success' };
             
-            uploadStatus[key] = { text: '⏳ 上傳中...', class: 'uploading' };
-            
-            try {
-              const fileName = `${Date.now()}_${key}_${file.name}`;
-              
-              const { data, error } = await supabase.storage
-                .from('rider-files')
-                .upload(fileName, file, {
-                  cacheControl: '3600',
-                  upsert: false
-                });
-
-              if (error) throw error;
-              
-              const { data: { publicUrl } } = supabase.storage.from('rider-files').getPublicUrl(fileName);
-              fileUrls[key] = publicUrl;
-              uploadStatus[key] = { text: '✅ 上傳成功', class: 'success' };
-              uploadedCount.value++;
-              
-              // 等待 100ms 再上傳下一個，避免並發問題
-              await new Promise(resolve => setTimeout(resolve, 100));
-              
-            } catch (error) {
-              console.error(`上傳 ${key} 失敗:`, error);
-              uploadStatus[key] = { text: '❌ 上傳失敗: ' + error.message, class: 'error' };
-              throw error;
-            }
+          } catch (error) {
+            console.error(`上傳 ${key} 失敗:`, error);
+            uploadStatus[key] = { text: ' 上傳失敗: ' + error.message, class: 'error' };
           }
-          
-          isUploading.value = false;
         };
 
         const submitForm = async () => {
-          // 基本校驗
-          if (!/^6\d{7}$/.test(form.phone)) { alert('電話格式錯誤 (需8位數字)'); return; }
-          if (!/^0119\d{15}$/.test(form.bank_account)) { alert('銀行帳號格式錯誤'); return; }
+          if (!/^6\d{7}$/.test(form.phone)) { alert('電話格式錯誤'); return; }
 
-          // 檢查是否所有文件都已選擇
           const requiredFiles = ['id_card_front', 'id_card_back', 'license_front', 'license_back', 'front_photo', 'bank_proof', 'verification_video'];
           for (let key of requiredFiles) {
-            if (!pendingFiles.value[key]) {
-              alert('請選擇所有必需的文件');
+            if (!fileUrls[key]) {
+              alert(`請確保所有文件已上傳成功（顯示綠色對勾）`);
               return;
             }
           }
 
           loading.value = true;
           try {
-            // 1. 先上傳所有文件
-            await uploadAllFiles();
-            
-            // 2. 所有文件上傳成功後，提交數據
             const { error } = await supabase.from('riders').insert([{
               name: form.name,
               phone: form.phone,
@@ -267,7 +216,6 @@
               work_type: form.work_type,
               id_number: form.id_number,
               vehicle_plate: form.vehicle_plate,
-              bank_account: form.bank_account,
               status: 'PENDING',
               id_card_front_url: fileUrls.id_card_front,
               id_card_back_url: fileUrls.id_card_back,
@@ -279,21 +227,15 @@
             }]);
 
             if (error) throw error;
-            
             submitted.value = true;
           } catch (err) {
-            console.error('提交失敗:', err);
             alert('提交失敗：' + err.message);
           } finally {
             loading.value = false;
           }
         };
 
-        return { 
-          form, stations, loading, isUploading, submitted, 
-          uploadStatus, uploadProgress: ref(true), uploadedCount, totalFiles,
-          submitForm, handleFileSelect 
-        };
+        return { form, stations, loading, submitted, uploadStatus, hasUploading, submitForm, handleFileUpload };
       }
     }).mount('#app');
   </script>
