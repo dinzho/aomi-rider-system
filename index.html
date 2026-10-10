@@ -4,8 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>專送騎手入職報名</title>
-  <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.js"></script>
+  
+  <!--  關鍵：使用 cdnjs 的穩定源，並加上 defer 確保順序 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/supabase/2.39.7/supabase.min.js" defer></script>
+  
   <style>
     body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 10px; }
     .container { max-width: 500px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
@@ -25,6 +28,9 @@
     .upload-status.success { color: #52c41a; }
     .upload-status.error { color: #f5222d; }
     
+    /* 錯誤提示樣式 */
+    .vue-error { background: #fff1f0; border: 1px solid #ffa39e; color: #f5222d; padding: 20px; border-radius: 8px; text-align: center; margin: 20px; }
+    
     /* 企微二維碼頁面樣式 */
     .wecom-page { text-align: center; padding: 20px; }
     .wecom-page h2 { color: #52c41a; margin-bottom: 10px; }
@@ -39,8 +45,14 @@
 </head>
 <body>
   <div id="app">
+    <!-- 🌟 如果 Vue 沒加載成功，會顯示這個紅色警告 -->
+    <div v-if="vueLoadError" class="vue-error">
+      <h3>⚠️ 系統加載失敗</h3>
+      <p>請檢查網絡連接，或嘗試強制刷新頁面 (Ctrl + F5)。</p>
+    </div>
+
     <!-- 報名表單頁面 -->
-    <div class="container" v-if="!submitted">
+    <div class="container" v-if="!submitted && !vueLoadError">
       <h2>專送騎手入職報名</h2>
       
       <form @submit.prevent="submitForm">
@@ -132,7 +144,7 @@
     </div>
 
     <!-- 報名成功 + 企微二維碼頁面 -->
-    <div class="container wecom-page" v-if="submitted">
+    <div class="container wecom-page" v-if="submitted && !vueLoadError">
       <h2>🎉 報名提交成功！</h2>
       <p class="subtitle">請立即掃描下方二維碼，添加站長企業微信</p>
       
@@ -159,120 +171,141 @@
   </div>
 
   <script>
-    const { createApp, reactive, ref, onMounted, computed } = Vue;
-    
-    // ⚠️ 請務必替換為你的真實 URL 和 KEY
-    const supabaseUrl = 'https://sxeumofpvoicgdfumozn.supabase.co'; 
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZXVtb2Zwdm9pY2dkZnVtb3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MjI0MDEsImV4cCI6MjEwNzE5ODQwMX0.BMSIbaFzJkvwDzomjKqIdcfDBLNqntYvTHyBiCnTphw
-';
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    // 🌟 等待 Vue 和 Supabase 加載完成後再執行
+    document.addEventListener('DOMContentLoaded', function() {
+      // 檢查 Vue 是否加載成功
+      if (typeof Vue === 'undefined') {
+        document.getElementById('app').innerHTML = '<div class="vue-error"><h3>⚠️ 系統加載失敗</h3><p>Vue 庫未加載，請檢查網絡或刷新頁面。</p></div>';
+        return;
+      }
 
-    createApp({
-      setup() {
-        const form = reactive({ name: '', phone: '', station: '', work_type: '', id_number: '', vehicle_plate: '' });
-        const stations = ref([]);
-        const loading = ref(false);
-        const submitted = ref(false);
-        
-        const fileUrls = reactive({
-          id_card_front: '', id_card_back: '', license_front: '', license_back: '',
-          front_photo: '', bank_proof: '', verification_video: ''
-        });
-        
-        const uploadStatus = reactive({
-          id_card_front: { text: '', class: '' },
-          id_card_back: { text: '', class: '' },
-          license_front: { text: '', class: '' },
-          license_back: { text: '', class: '' },
-          front_photo: { text: '', class: '' },
-          bank_proof: { text: '', class: '' },
-          verification_video: { text: '', class: '' }
-        });
+      const { createApp, reactive, ref, onMounted, computed } = Vue;
+      
+      // ⚠️ 請務必替換為你的真實 URL 和 KEY
+      const supabaseUrl = 'https://sxeumofpvoicgdfumozn.supabase.co'; 
+      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZXVtb2Zwdm9pY2dkZnVtb3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MjI0MDEsImV4cCI6MjEwNzE5ODQwMX0.BMSIbaFzJkvwDzomjKqIdcfDBLNqntYvTHyBiCnTphw';
+      
+      // 檢查是否替換了 URL
+      if (supabaseUrl.includes('請替換')) {
+        document.getElementById('app').innerHTML = '<div class="vue-error"><h3>⚠️ 配置錯誤</h3><p>請先在 GitHub 代碼裡替換 supabaseUrl 和 supabaseKey！</p></div>';
+        return;
+      }
 
-        const hasUploading = computed(() => {
-          return Object.values(uploadStatus).some(s => s.class === 'uploading');
-        });
+      const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        onMounted(async () => {
-          if (supabaseUrl.includes('請替換')) return;
-          const { data, error } = await supabase.from('stations').select('id, name').eq('status', 'ACTIVE');
-          if (!error) stations.value = data;
-        });
+      createApp({
+        setup() {
+          const form = reactive({ name: '', phone: '', station: '', work_type: '', id_number: '', vehicle_plate: '' });
+          const stations = ref([]);
+          const loading = ref(false);
+          const submitted = ref(false);
+          const vueLoadError = ref(false);
+          
+          const fileUrls = reactive({
+            id_card_front: '', id_card_back: '', license_front: '', license_back: '',
+            front_photo: '', bank_proof: '', verification_video: ''
+          });
+          
+          const uploadStatus = reactive({
+            id_card_front: { text: '', class: '' },
+            id_card_back: { text: '', class: '' },
+            license_front: { text: '', class: '' },
+            license_back: { text: '', class: '' },
+            front_photo: { text: '', class: '' },
+            bank_proof: { text: '', class: '' },
+            verification_video: { text: '', class: '' }
+          });
 
-        const handleFileUpload = async (event, key) => {
-          const file = event.target.files[0];
-          if (!file) return;
+          const hasUploading = computed(() => {
+            return Object.values(uploadStatus).some(s => s.class === 'uploading');
+          });
 
-          const maxSize = key === 'verification_video' ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
-          if (file.size > maxSize) {
-            uploadStatus[key] = { text: `❌ 文件太大 (最大 ${(maxSize/1024/1024)}MB)`, class: 'error' };
-            return;
-          }
+          onMounted(async () => {
+            try {
+              const { data, error } = await supabase.from('stations').select('id, name').eq('status', 'ACTIVE');
+              if (error) throw error;
+              stations.value = data;
+            } catch (err) {
+              console.error('加載站點失敗:', err);
+              vueLoadError.value = true;
+            }
+          });
 
-          uploadStatus[key] = { text: '⏳ 上傳中，請耐心等待...', class: 'uploading' };
-          fileUrls[key] = '';
+          const handleFileUpload = async (event, key) => {
+            const file = event.target.files[0];
+            if (!file) return;
 
-          try {
-            const fileName = `${Date.now()}_${key}_${file.name.replace(/\s+/g, '_')}`;
-            const { data, error } = await supabase.storage
-              .from('rider-files')
-              .upload(fileName, file, { cacheControl: '3600', upsert: false });
-
-            if (error) throw error;
-            
-            const { data: { publicUrl } } = supabase.storage.from('rider-files').getPublicUrl(fileName);
-            fileUrls[key] = publicUrl;
-            uploadStatus[key] = { text: '✅ 上傳成功', class: 'success' };
-            
-          } catch (error) {
-            console.error(`上傳 ${key} 失敗:`, error);
-            uploadStatus[key] = { text: '❌ 上傳失敗: ' + error.message, class: 'error' };
-          }
-        };
-
-        const submitForm = async () => {
-          if (!/^6\d{7}$/.test(form.phone)) { alert('電話格式錯誤'); return; }
-
-          const requiredFiles = ['id_card_front', 'id_card_back', 'license_front', 'license_back', 'front_photo', 'bank_proof', 'verification_video'];
-          for (let key of requiredFiles) {
-            if (!fileUrls[key]) {
-              alert(`請確保所有文件已上傳成功（顯示綠色對勾）`);
+            const maxSize = key === 'verification_video' ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
+            if (file.size > maxSize) {
+              uploadStatus[key] = { text: `❌ 文件太大 (最大 ${(maxSize/1024/1024)}MB)`, class: 'error' };
               return;
             }
-          }
 
-          loading.value = true;
-          try {
-            const { error } = await supabase.from('riders').insert([{
-              name: form.name,
-              phone: form.phone,
-              station: form.station,
-              work_type: form.work_type,
-              id_number: form.id_number,
-              vehicle_plate: form.vehicle_plate,
-              bank_account: '見銀行證明照片',
-              status: 'PENDING',
-              id_card_front_url: fileUrls.id_card_front,
-              id_card_back_url: fileUrls.id_card_back,
-              license_front_url: fileUrls.license_front,
-              license_back_url: fileUrls.license_back,
-              front_photo_url: fileUrls.front_photo,
-              bank_proof_url: fileUrls.bank_proof,
-              verification_video_url: fileUrls.verification_video
-            }]);
+            uploadStatus[key] = { text: '⏳ 上傳中，請耐心等待...', class: 'uploading' };
+            fileUrls[key] = '';
 
-            if (error) throw error;
-            submitted.value = true;
-          } catch (err) {
-            alert('提交失敗：' + err.message);
-          } finally {
-            loading.value = false;
-          }
-        };
+            try {
+              const fileName = `${Date.now()}_${key}_${file.name.replace(/\s+/g, '_')}`;
+              const { data, error } = await supabase.storage
+                .from('rider-files')
+                .upload(fileName, file, { cacheControl: '3600', upsert: false });
 
-        return { form, stations, loading, submitted, uploadStatus, hasUploading, submitForm, handleFileUpload };
-      }
-    }).mount('#app');
+              if (error) throw error;
+              
+              const { data: { publicUrl } } = supabase.storage.from('rider-files').getPublicUrl(fileName);
+              fileUrls[key] = publicUrl;
+              uploadStatus[key] = { text: '✅ 上傳成功', class: 'success' };
+              
+            } catch (error) {
+              console.error(`上傳 ${key} 失敗:`, error);
+              uploadStatus[key] = { text: '❌ 上傳失敗: ' + error.message, class: 'error' };
+            }
+          };
+
+          const submitForm = async () => {
+            if (!/^6\d{7}$/.test(form.phone)) { alert('電話格式錯誤'); return; }
+
+            const requiredFiles = ['id_card_front', 'id_card_back', 'license_front', 'license_back', 'front_photo', 'bank_proof', 'verification_video'];
+            for (let key of requiredFiles) {
+              if (!fileUrls[key]) {
+                alert(`請確保所有文件已上傳成功（顯示綠色對勾）`);
+                return;
+              }
+            }
+
+            loading.value = true;
+            try {
+              const { error } = await supabase.from('riders').insert([{
+                name: form.name,
+                phone: form.phone,
+                station: form.station,
+                work_type: form.work_type,
+                id_number: form.id_number,
+                vehicle_plate: form.vehicle_plate,
+                bank_account: '見銀行證明照片',
+                status: 'PENDING',
+                id_card_front_url: fileUrls.id_card_front,
+                id_card_back_url: fileUrls.id_card_back,
+                license_front_url: fileUrls.license_front,
+                license_back_url: fileUrls.license_back,
+                front_photo_url: fileUrls.front_photo,
+                bank_proof_url: fileUrls.bank_proof,
+                verification_video_url: fileUrls.verification_video
+              }]);
+
+              if (error) throw error;
+              submitted.value = true;
+            } catch (err) {
+              alert('提交失敗：' + err.message);
+            } finally {
+              loading.value = false;
+            }
+          };
+
+          return { form, stations, loading, submitted, uploadStatus, hasUploading, submitForm, handleFileUpload, vueLoadError };
+        }
+      }).mount('#app');
+    });
   </script>
 </body>
 </html>
