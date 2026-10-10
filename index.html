@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>專送騎手影特培訓報名</title>
   
-  <!-- ✅ 使用 unpkg 官方推薦 CDN -->
   <script src="https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2.39.7"></script>
   
@@ -39,25 +38,17 @@
 </head>
 <body>
   <div id="app">
-    <!-- 加載失敗提示 -->
     <div v-if="loadError" class="error-box">
       <h3>⚠️ 系統初始化失敗</h3>
       <p>{{ loadError }}</p>
       <button class="btn" @click="location.reload()" style="margin-top:15px;">🔄 重新載入</button>
     </div>
 
-    <!-- 報名表單 -->
     <div class="container" v-if="!loadError && !submitted">
       <h2>專送騎手入職報名</h2>
       <form @submit.prevent="submitForm">
-        <div class="form-group">
-          <label>姓名 *</label>
-          <input v-model="form.name" required>
-        </div>
-        <div class="form-group">
-          <label>登入電話 (8位) *</label>
-          <input v-model="form.phone" maxlength="8" required>
-        </div>
+        <div class="form-group"><label>姓名 *</label><input v-model="form.name" required></div>
+        <div class="form-group"><label>登入電話 (8位) *</label><input v-model="form.phone" maxlength="8" required></div>
         <div class="form-group">
           <label>現職站點 *</label>
           <select v-model="form.station" required>
@@ -69,18 +60,11 @@
           <label>工作類型 *</label>
           <select v-model="form.work_type" required>
             <option value="">請選擇</option>
-            <option value="全職">全職</option>
-            <option value="兼職">兼職</option>
+            <option value="全職">全職</option><option value="兼職">兼職</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>身份證號碼 (8位) *</label>
-          <input v-model="form.id_number" maxlength="8" required>
-        </div>
-        <div class="form-group">
-          <label>電單車車牌號碼 *</label>
-          <input v-model="form.vehicle_plate" required>
-        </div>
+        <div class="form-group"><label>身份證號碼 (8位) *</label><input v-model="form.id_number" maxlength="8" required></div>
+        <div class="form-group"><label>電單車車牌號碼 *</label><input v-model="form.vehicle_plate" required></div>
 
         <h3>證件上傳 <span style="font-size:12px;color:#666;font-weight:normal">(選中後自動上傳)</span></h3>
         
@@ -129,12 +113,10 @@
       </form>
     </div>
 
-    <!-- 報名成功 + 企微二維碼 -->
     <div class="container wecom-page" v-if="!loadError && submitted">
-      <h2> 報名提交成功！</h2>
+      <h2>🎉 報名提交成功！</h2>
       <p style="color:#666;font-size:14px">請立即掃描下方二維碼，添加站長企業微信</p>
       <div class="qr-container">
-        <!-- ⚠️ 替換為你的真實二維碼 URL -->
         <img src="https://sxeumofpvoicgdfumozn.supabase.co/storage/v1/object/public/qrcodes/din_wechat.jpg" alt="站長企業微信二維碼">
         <div class="qr-tip">⚠️ 請長按識別二維碼添加站長</div>
         <p style="color:#666;font-size:13px;margin-top:10px">添加後，請發送您的<strong>姓名</strong>給站長</p>
@@ -149,9 +131,8 @@
   </div>
 
   <script>
-    // ===== 加載檢測 =====
     if (typeof Vue === 'undefined') {
-      document.getElementById('app').innerHTML = '<div class="error-box"><h3>️ Vue 加載失敗</h3><p>請檢查網絡連接，然後按 Ctrl+F5 強制刷新頁面。</p><button class="btn" onclick="location.reload()" style="margin-top:15px">🔄 重新載入</button></div>';
+      document.getElementById('app').innerHTML = '<div class="error-box"><h3>⚠️ Vue 加載失敗</h3><p>請檢查網絡連接，然後按 Ctrl+F5 強制刷新頁面。</p><button class="btn" onclick="location.reload()" style="margin-top:15px">🔄 重新載入</button></div>';
       throw new Error('Vue failed to load');
     }
     if (typeof supabase === 'undefined') {
@@ -161,7 +142,6 @@
 
     const { createApp, reactive, ref, onMounted, computed } = Vue;
 
-    // ️⚠️⚠️ 請務必替換為你的真實值 ️⚠️⚠️
     const SUPABASE_URL = 'https://sxeumofpvoicgdfumozn.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZXVtb2Zwdm9pY2dkZnVtb3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MjI0MDEsImV4cCI6MjEwNzE5ODQwMX0.BMSIbaFzJkvwDzomjKqIdcfDBLNqntYvTHyBiCnTphw';
 
@@ -170,7 +150,6 @@
       throw new Error('Config not replaced');
     }
 
-    // ✅ 使用全局 supabase 對象（unpkg 會掛載到 window.supabase）
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     createApp({
@@ -220,7 +199,7 @@
             return;
           }
 
-          uploadStatus[key] = { text: '⏳ 上傳中...', class: 'uploading' };
+          uploadStatus[key] = { text: ' 上傳中...', class: 'uploading' };
           fileUrls[key] = '';
 
           try {
@@ -246,6 +225,7 @@
 
           loading.value = true;
           try {
+            // ✅ 關鍵修復：手動映射字段名，不要用 ...fileUrls
             const { error } = await sb.from('riders').insert([{
               name: form.name,
               phone: form.phone,
@@ -255,8 +235,15 @@
               vehicle_plate: form.vehicle_plate,
               bank_account: '見銀行證明照片',
               status: 'PENDING',
-              ...fileUrls
+              id_card_front_url: fileUrls.id_card_front,
+              id_card_back_url: fileUrls.id_card_back,
+              license_front_url: fileUrls.license_front,
+              license_back_url: fileUrls.license_back,
+              front_photo_url: fileUrls.front_photo,
+              bank_proof_url: fileUrls.bank_proof,
+              verification_video_url: fileUrls.verification_video
             }]);
+            
             if (error) throw error;
             submitted.value = true;
           } catch (err) {
