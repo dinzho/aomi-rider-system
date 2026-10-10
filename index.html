@@ -100,7 +100,7 @@
 
         <div class="form-group">
           <label>銀行帳號證明 *</label>
-          <span class="tip-label"> 教學：登入網上銀行 ＞ 搜索「賬戶證明」＞ 選擇葡幣賬號 ＞ 保存照片後上傳</span>
+          <span class="tip-label">📱 教學：登入網上銀行 ＞ 搜索「賬戶證明」＞ 選擇葡幣賬號 ＞ 保存照片後上傳</span>
           <input type="file" accept="image/*" @change="(e) => handleFileUpload(e, 'bank_proof')" class="file-input">
           <div class="upload-status" :class="uploadStatus.bank_proof?.class">{{ uploadStatus.bank_proof?.text }}</div>
         </div>
@@ -192,7 +192,7 @@
             
           } catch (error) {
             console.error(`上傳 ${key} 失敗:`, error);
-            uploadStatus[key] = { text: ' 上傳失敗: ' + error.message, class: 'error' };
+            uploadStatus[key] = { text: '❌ 上傳失敗: ' + error.message, class: 'error' };
           }
         };
 
@@ -216,6 +216,8 @@
               work_type: form.work_type,
               id_number: form.id_number,
               vehicle_plate: form.vehicle_plate,
+              // 🌟 關鍵修改：自動填入默認值，解決數據庫報錯，並提醒管理員
+              bank_account: '見銀行證明照片', 
               status: 'PENDING',
               id_card_front_url: fileUrls.id_card_front,
               id_card_back_url: fileUrls.id_card_back,
