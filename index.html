@@ -224,7 +224,7 @@
           fileUrls[key] = '';
 
           try {
-            const fileName = `${Date.now()}_${key}_${file.name.replace(/\s+/g, '_')}`;
+            const fileName = `${Date.now()}_${key}.${file.name.split('.').pop()}`;
             const { error } = await sb.storage.from('rider-files').upload(fileName, file, { cacheControl: '3600', upsert: false });
             if (error) throw error;
             
