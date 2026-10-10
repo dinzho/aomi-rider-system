@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>專送騎手入職報名</title>
+  <!-- 引入 Vue 3 和 Supabase JS SDK -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 20px; }
+    .container { max-width: 400px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h2 { text-align: center; color: #333; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    .btn { width: 100%; padding: 12px; background: #1890ff; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+    .btn:disabled { background: #ccc; }
+    .error { color: #f5222d; font-size: 12px; margin-top: 3px; }
+    .success { text-align: center; color: #52c41a; font-size: 18px; font-weight: bold; padding: 40px 0; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="container" v-if="!submitted">
+      <h2>專送騎手入職報名</h2>
+      <form @submit.prevent="submitForm">
+        <div class="form-group">
+          <label>姓名 *</label>
+          <input v-model="form.name" required>
+        </div>
+        <div class="form-group">
+          <label>登入電話 (8位) *</label>
+          <input v-model="form.phone" maxlength="8" required>
+          <div v-if="errors.phone" class="error">{{ errors.phone }}</div>
+        </div>
+        <div class="form-group">
+          <label>現職站點 *</label>
+          <select v-model="form.station" required>
+            <option value="">請選擇</option>
+            <option v-for="s in stations" :key="s.id" :value="s.name">{{ s.name }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>工作類型 *</label>
+          <select v-model="form.work_type" required>
+            <option value="">請選擇</option>
+            <option value="全職">全職</option>
+            <option value="兼職">兼職</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>身份證號碼 (8位) *</label>
+          <input v-model="form.id_number" maxlength="8" required>
+          <div v-if="errors.id_number" class="error">{{ errors.id_number }}</div>
+        </div>
+        <div class="form-group">
+          <label>電單車車牌號碼 *</label>
+          <input v-model="form.vehicle_plate" required>
+        </div>
+        <div class="form-group">
+          <label>工商銀行帳號 (0119開頭19位) *</label>
+          <input v-model="form.bank_account" maxlength="19" required>
+          <div v-if="errors.bank_account" class="error">{{ errors.bank_account }}</div>
+        </div>
+        
+        <button type="submit" class="btn" :disabled="loading">
+          {{ loading ? '提交中...' : '提交報名' }}
+        </button>
+      </form>
+    </div>
+
+    <div class="container success" v-if="submitted">
+      🎉 報名成功！<br>
+      <span style="font-size: 14px; color: #666; font-weight: normal;">請等待站長審核通知。</span>
+    </div>
+  </div>
+
+  <script>
+    const { createApp, reactive, ref, onMounted } = Vue;
+    // ⚠️ 請將下面的 URL 和 KEY 替換為你在步驟 1 中複製的真實值！
+    const supabaseUrl = 'https://sxeumofpvoicgdfumozn.supabase.co/rest/v1/';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZXVtb2Zwdm9pY2dkZnVtb3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MjI0MDEsImV4cCI6MjEwNzE5ODQwMX0.BMSIbaFzJkvwDzomjKqIdcfDBLNqntYvTHyBiCnTphw';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    createApp({
+      setup() {
+        const form = reactive({ name: '', phone: '', station: '', work_type: '', id_number: '', vehicle_plate: '', bank_account: '' });
+        const errors = reactive({ phone: '', id_number: '', bank_account: '' });
+        const stations = ref([]);
+        const loading = ref(false);
+        const submitted = ref(false);
+
+        // 頁面加載時，從真實數據庫獲取站點列表
+        onMounted(async () => {
+          const { data, error } = await supabase.from('stations').select('id, name').eq('status', 'ACTIVE');
+          if (!error) stations.value = data;
+        });
+
+        const submitForm = async () => {
+          // 清空錯誤
+          Object.keys(errors).forEach(k => errors[k] = '');
+          let hasError = false;
+
+          // 真實業務校驗
+          if (!/^6\d{7}$/.test(form.phone)) { errors.phone = '請輸入正確的8位手機號'; hasError = true; }
+          if (!/^\d{8}$/.test(form.id_number)) { errors.id_number = '必須為8位數字'; hasError = true; }
+          if (!/^0119\d{15}$/.test(form.bank_account)) { errors.bank_account = '必須以0119開頭且共19位'; hasError = true; }
+          
+          if (hasError) return;
+
+          loading.value = true;
+          try {
+            // 🌟 真實寫入 Supabase 數據庫
+            const { data, error } = await supabase
+              .from('riders')
+              .insert([{
+                name: form.name,
+                phone: form.phone,
+                station: form.station,
+                work_type: form.work_type,
+                id_number: form.id_number,
+                vehicle_plate: form.vehicle_plate,
+                bank_account: form.bank_account,
+                status: 'PENDING'
+              }])
+              .select();
+
+            if (error) throw error;
+            
+            // 提交成功
+            submitted.value = true;
+          } catch (err) {
+            alert('提交失敗：' + err.message);
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        return { form, errors, stations, loading, submitted, submitForm };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
