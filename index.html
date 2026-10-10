@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>專送騎手入職報名</title>
   
-  <!--  關鍵：使用 cdnjs 的穩定源，並加上 defer 確保順序 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/supabase/2.39.7/supabase.min.js" defer></script>
+  <!-- ✅ 使用 unpkg 官方推薦 CDN -->
+  <script src="https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2.39.7"></script>
   
   <style>
-    body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 10px; }
+    body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 10px; margin: 0; }
     .container { max-width: 500px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     h2 { text-align: center; color: #333; font-size: 20px; }
     h3 { font-size: 16px; color: #333; margin: 20px 0 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;}
@@ -22,39 +22,33 @@
     .file-input { margin-top: 5px; font-size: 14px; }
     .btn { width: 100%; padding: 12px; background: #1890ff; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 10px; }
     .btn:disabled { background: #ccc; }
-    .success { text-align: center; color: #52c41a; font-size: 18px; font-weight: bold; padding: 40px 0; }
     .upload-status { font-size: 12px; margin-top: 2px; min-height: 18px;}
     .upload-status.uploading { color: #fa8c16; }
     .upload-status.success { color: #52c41a; }
     .upload-status.error { color: #f5222d; }
-    
-    /* 錯誤提示樣式 */
-    .vue-error { background: #fff1f0; border: 1px solid #ffa39e; color: #f5222d; padding: 20px; border-radius: 8px; text-align: center; margin: 20px; }
-    
-    /* 企微二維碼頁面樣式 */
+    .error-box { background: #fff1f0; border: 2px solid #ff4d4f; color: #cf1322; padding: 20px; border-radius: 8px; text-align: center; margin: 20px auto; max-width: 500px; }
+    .error-box h3 { color: #cf1322; margin-top: 0; }
     .wecom-page { text-align: center; padding: 20px; }
-    .wecom-page h2 { color: #52c41a; margin-bottom: 10px; }
-    .wecom-page .subtitle { color: #666; font-size: 14px; margin-bottom: 20px; }
+    .wecom-page h2 { color: #52c41a; }
     .qr-container { background: #f6ffed; border: 2px solid #b7eb8f; border-radius: 8px; padding: 20px; margin: 20px 0; }
-    .qr-container img { max-width: 200px; width: 100%; border-radius: 4px; }
-    .qr-tip { color: #fa8c16; font-size: 14px; font-weight: bold; margin-top: 15px; }
-    .qr-instruction { color: #666; font-size: 13px; margin-top: 10px; line-height: 1.6; }
-    .next-step { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
-    .next-step p { color: #666; font-size: 14px; }
+    .qr-container img { max-width: 200px; width: 100%; }
+    .qr-tip { color: #fa8c16; font-weight: bold; margin-top: 15px; }
+    .next-step { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: left; }
+    .next-step p { color: #666; font-size: 14px; margin: 8px 0; }
   </style>
 </head>
 <body>
   <div id="app">
-    <!-- 🌟 如果 Vue 沒加載成功，會顯示這個紅色警告 -->
-    <div v-if="vueLoadError" class="vue-error">
-      <h3>⚠️ 系統加載失敗</h3>
-      <p>請檢查網絡連接，或嘗試強制刷新頁面 (Ctrl + F5)。</p>
+    <!-- 加載失敗提示 -->
+    <div v-if="loadError" class="error-box">
+      <h3>⚠️ 系統初始化失敗</h3>
+      <p>{{ loadError }}</p>
+      <button class="btn" @click="location.reload()" style="margin-top:15px;">🔄 重新載入</button>
     </div>
 
-    <!-- 報名表單頁面 -->
-    <div class="container" v-if="!submitted && !vueLoadError">
+    <!-- 報名表單 -->
+    <div class="container" v-if="!loadError && !submitted">
       <h2>專送騎手入職報名</h2>
-      
       <form @submit.prevent="submitForm">
         <div class="form-group">
           <label>姓名 *</label>
@@ -64,7 +58,6 @@
           <label>登入電話 (8位) *</label>
           <input v-model="form.phone" maxlength="8" required>
         </div>
-        
         <div class="form-group">
           <label>現職站點 *</label>
           <select v-model="form.station" required>
@@ -72,7 +65,6 @@
             <option v-for="s in stations" :key="s.id" :value="s.name">{{ s.name }}</option>
           </select>
         </div>
-
         <div class="form-group">
           <label>工作類型 *</label>
           <select v-model="form.work_type" required>
@@ -90,222 +82,193 @@
           <input v-model="form.vehicle_plate" required>
         </div>
 
-        <h3>證件上傳 <span style="font-size:12px; color:#666; font-weight:normal;">(選中後自動上傳，請耐心等待綠色對勾)</span></h3>
+        <h3>證件上傳 <span style="font-size:12px;color:#666;font-weight:normal">(選中後自動上傳)</span></h3>
         
         <div class="form-group">
           <label>身份證正面 *</label>
-          <input type="file" accept="image/*" @change="(e) => handleFileUpload(e, 'id_card_front')" class="file-input">
+          <input type="file" accept="image/*" @change="e => handleFileUpload(e, 'id_card_front')" class="file-input">
           <div class="upload-status" :class="uploadStatus.id_card_front?.class">{{ uploadStatus.id_card_front?.text }}</div>
         </div>
-        
         <div class="form-group">
           <label>身份證背面 *</label>
-          <input type="file" accept="image/*" @change="(e) => handleFileUpload(e, 'id_card_back')" class="file-input">
+          <input type="file" accept="image/*" @change="e => handleFileUpload(e, 'id_card_back')" class="file-input">
           <div class="upload-status" :class="uploadStatus.id_card_back?.class">{{ uploadStatus.id_card_back?.text }}</div>
         </div>
-        
         <div class="form-group">
           <label>駕駛執照正面 *</label>
-          <input type="file" accept="image/*" @change="(e) => handleFileUpload(e, 'license_front')" class="file-input">
+          <input type="file" accept="image/*" @change="e => handleFileUpload(e, 'license_front')" class="file-input">
           <div class="upload-status" :class="uploadStatus.license_front?.class">{{ uploadStatus.license_front?.text }}</div>
         </div>
-        
         <div class="form-group">
           <label>駕駛執照背面 *</label>
-          <input type="file" accept="image/*" @change="(e) => handleFileUpload(e, 'license_back')" class="file-input">
+          <input type="file" accept="image/*" @change="e => handleFileUpload(e, 'license_back')" class="file-input">
           <div class="upload-status" :class="uploadStatus.license_back?.class">{{ uploadStatus.license_back?.text }}</div>
         </div>
-        
         <div class="form-group">
-          <label>個人正面免冠照 * <span class="sub-label">(點擊後將打開前置攝像頭，請現場拍攝)</span></label>
-          <input type="file" accept="image/*" capture="user" @change="(e) => handleFileUpload(e, 'front_photo')" class="file-input">
+          <label>個人正面免冠照 * <span class="sub-label">(現場拍攝)</span></label>
+          <input type="file" accept="image/*" capture="user" @change="e => handleFileUpload(e, 'front_photo')" class="file-input">
           <div class="upload-status" :class="uploadStatus.front_photo?.class">{{ uploadStatus.front_photo?.text }}</div>
         </div>
-
         <div class="form-group">
           <label>銀行帳號證明 *</label>
           <span class="tip-label">📱 教學：登入網上銀行 ＞ 搜索「賬戶證明」＞ 選擇葡幣賬號 ＞ 保存照片後上傳</span>
-          <input type="file" accept="image/*" @change="(e) => handleFileUpload(e, 'bank_proof')" class="file-input">
+          <input type="file" accept="image/*" @change="e => handleFileUpload(e, 'bank_proof')" class="file-input">
           <div class="upload-status" :class="uploadStatus.bank_proof?.class">{{ uploadStatus.bank_proof?.text }}</div>
         </div>
 
-        <h3 style="color: #f5222d;">防代培核身 <span style="font-size:12px; color:#666; font-weight:normal;">(建議視頻控制在 10 秒內)</span></h3>
-        
+        <h3 style="color:#f5222d">防代培核身 <span style="font-size:12px;color:#666;font-weight:normal">(建議 10 秒內)</span></h3>
         <div class="form-group">
           <label>核身視頻 * <span class="sub-label">(請正面對鏡頭，說出個人姓名)</span></label>
-          <input type="file" accept="video/*" capture="user" @change="(e) => handleFileUpload(e, 'verification_video')" class="file-input">
+          <input type="file" accept="video/*" capture="user" @change="e => handleFileUpload(e, 'verification_video')" class="file-input">
           <div class="upload-status" :class="uploadStatus.verification_video?.class">{{ uploadStatus.verification_video?.text }}</div>
         </div>
 
         <button type="submit" class="btn" :disabled="loading || hasUploading">
-          {{ loading ? '提交數據中...' : (hasUploading ? '文件上傳中，請稍後...' : '提交報名') }}
+          {{ loading ? '提交數據中...' : (hasUploading ? '文件上傳中...' : '提交報名') }}
         </button>
       </form>
     </div>
 
-    <!-- 報名成功 + 企微二維碼頁面 -->
-    <div class="container wecom-page" v-if="submitted && !vueLoadError">
-      <h2>🎉 報名提交成功！</h2>
-      <p class="subtitle">請立即掃描下方二維碼，添加站長企業微信</p>
-      
+    <!-- 報名成功 + 企微二維碼 -->
+    <div class="container wecom-page" v-if="!loadError && submitted">
+      <h2> 報名提交成功！</h2>
+      <p style="color:#666;font-size:14px">請立即掃描下方二維碼，添加站長企業微信</p>
       <div class="qr-container">
-        <!-- ⚠️ 請替換為你的真實站長企微二維碼圖片 URL -->
+        <!-- ⚠️ 替換為你的真實二維碼 URL -->
         <img src="https://sxeumofpvoicgdfumozn.supabase.co/storage/v1/object/public/qrcodes/din_wechat.jpg" alt="站長企業微信二維碼">
         <div class="qr-tip">⚠️ 請長按識別二維碼添加站長</div>
-        <div class="qr-instruction">
-          添加後，請發送您的<strong>姓名</strong>給站長，<br>
-          以便站長核對您的報名信息。
-        </div>
+        <p style="color:#666;font-size:13px;margin-top:10px">添加後，請發送您的<strong>姓名</strong>給站長</p>
       </div>
-
       <div class="next-step">
         <p><strong>下一步：</strong></p>
         <p>1. 添加站長企業微信（上方二維碼）</p>
         <p>2. 等待站長審核您的報名資料</p>
         <p>3. 審核通過後，站長會發送培訓通知給您</p>
-        <p style="color: #999; font-size: 12px; margin-top: 20px;">
-          如已添加站長，可關閉此頁面。
-        </p>
       </div>
     </div>
   </div>
 
   <script>
-    // 🌟 等待 Vue 和 Supabase 加載完成後再執行
-    document.addEventListener('DOMContentLoaded', function() {
-      // 檢查 Vue 是否加載成功
-      if (typeof Vue === 'undefined') {
-        document.getElementById('app').innerHTML = '<div class="vue-error"><h3>⚠️ 系統加載失敗</h3><p>Vue 庫未加載，請檢查網絡或刷新頁面。</p></div>';
-        return;
+    // ===== 加載檢測 =====
+    if (typeof Vue === 'undefined') {
+      document.getElementById('app').innerHTML = '<div class="error-box"><h3>️ Vue 加載失敗</h3><p>請檢查網絡連接，然後按 Ctrl+F5 強制刷新頁面。</p><button class="btn" onclick="location.reload()" style="margin-top:15px">🔄 重新載入</button></div>';
+      throw new Error('Vue failed to load');
+    }
+    if (typeof supabase === 'undefined') {
+      document.getElementById('app').innerHTML = '<div class="error-box"><h3>⚠️ Supabase SDK 加載失敗</h3><p>請檢查網絡連接，然後按 Ctrl+F5 強制刷新頁面。</p><button class="btn" onclick="location.reload()" style="margin-top:15px">🔄 重新載入</button></div>';
+      throw new Error('Supabase failed to load');
+    }
+
+    const { createApp, reactive, ref, onMounted, computed } = Vue;
+
+    // ️⚠️⚠️ 請務必替換為你的真實值 ️⚠️⚠️
+    const SUPABASE_URL = 'https://sxeumofpvoicgdfumozn.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZXVtb2Zwdm9pY2dkZnVtb3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MjI0MDEsImV4cCI6MjEwNzE5ODQwMX0.BMSIbaFzJkvwDzomjKqIdcfDBLNqntYvTHyBiCnTphw';
+
+    if (SUPABASE_URL.includes('請替換')) {
+      document.getElementById('app').innerHTML = '<div class="error-box"><h3>⚠️ 配置錯誤</h3><p>請先在 GitHub 代碼裡替換 SUPABASE_URL 和 SUPABASE_KEY！</p></div>';
+      throw new Error('Config not replaced');
+    }
+
+    // ✅ 使用全局 supabase 對象（unpkg 會掛載到 window.supabase）
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    createApp({
+      setup() {
+        const form = reactive({ name: '', phone: '', station: '', work_type: '', id_number: '', vehicle_plate: '' });
+        const stations = ref([]);
+        const loading = ref(false);
+        const submitted = ref(false);
+        const loadError = ref('');
+        
+        const fileUrls = reactive({
+          id_card_front: '', id_card_back: '', license_front: '', license_back: '',
+          front_photo: '', bank_proof: '', verification_video: ''
+        });
+        
+        const uploadStatus = reactive({
+          id_card_front: { text: '', class: '' },
+          id_card_back: { text: '', class: '' },
+          license_front: { text: '', class: '' },
+          license_back: { text: '', class: '' },
+          front_photo: { text: '', class: '' },
+          bank_proof: { text: '', class: '' },
+          verification_video: { text: '', class: '' }
+        });
+
+        const hasUploading = computed(() => Object.values(uploadStatus).some(s => s.class === 'uploading'));
+
+        onMounted(async () => {
+          try {
+            const { data, error } = await sb.from('stations').select('id, name').eq('status', 'ACTIVE');
+            if (error) throw error;
+            stations.value = data;
+            console.log('✅ 站點加載成功:', data.length, '個');
+          } catch (err) {
+            console.error('站點加載失敗:', err);
+            loadError.value = '無法連接數據庫：' + err.message;
+          }
+        });
+
+        const handleFileUpload = async (event, key) => {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          const maxSize = key === 'verification_video' ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
+          if (file.size > maxSize) {
+            uploadStatus[key] = { text: `❌ 文件太大 (最大${maxSize/1024/1024}MB)`, class: 'error' };
+            return;
+          }
+
+          uploadStatus[key] = { text: '⏳ 上傳中...', class: 'uploading' };
+          fileUrls[key] = '';
+
+          try {
+            const fileName = `${Date.now()}_${key}_${file.name.replace(/\s+/g, '_')}`;
+            const { error } = await sb.storage.from('rider-files').upload(fileName, file, { cacheControl: '3600', upsert: false });
+            if (error) throw error;
+            
+            const { data: { publicUrl } } = sb.storage.from('rider-files').getPublicUrl(fileName);
+            fileUrls[key] = publicUrl;
+            uploadStatus[key] = { text: '✅ 上傳成功', class: 'success' };
+          } catch (error) {
+            console.error(`上傳 ${key} 失敗:`, error);
+            uploadStatus[key] = { text: '❌ 失敗: ' + error.message, class: 'error' };
+          }
+        };
+
+        const submitForm = async () => {
+          if (!/^6\d{7}$/.test(form.phone)) { alert('電話格式錯誤'); return; }
+
+          for (let key of Object.keys(fileUrls)) {
+            if (!fileUrls[key]) { alert('請確保所有文件已上傳成功'); return; }
+          }
+
+          loading.value = true;
+          try {
+            const { error } = await sb.from('riders').insert([{
+              name: form.name,
+              phone: form.phone,
+              station: form.station,
+              work_type: form.work_type,
+              id_number: form.id_number,
+              vehicle_plate: form.vehicle_plate,
+              bank_account: '見銀行證明照片',
+              status: 'PENDING',
+              ...fileUrls
+            }]);
+            if (error) throw error;
+            submitted.value = true;
+          } catch (err) {
+            alert('提交失敗：' + err.message);
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        return { form, stations, loading, submitted, uploadStatus, hasUploading, submitForm, handleFileUpload, loadError };
       }
-
-      const { createApp, reactive, ref, onMounted, computed } = Vue;
-      
-      // ⚠️ 請務必替換為你的真實 URL 和 KEY
-      const supabaseUrl = 'https://sxeumofpvoicgdfumozn.supabase.co'; 
-      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZXVtb2Zwdm9pY2dkZnVtb3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MjI0MDEsImV4cCI6MjEwNzE5ODQwMX0.BMSIbaFzJkvwDzomjKqIdcfDBLNqntYvTHyBiCnTphw';
-      
-      // 檢查是否替換了 URL
-      if (supabaseUrl.includes('請替換')) {
-        document.getElementById('app').innerHTML = '<div class="vue-error"><h3>⚠️ 配置錯誤</h3><p>請先在 GitHub 代碼裡替換 supabaseUrl 和 supabaseKey！</p></div>';
-        return;
-      }
-
-      const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-      createApp({
-        setup() {
-          const form = reactive({ name: '', phone: '', station: '', work_type: '', id_number: '', vehicle_plate: '' });
-          const stations = ref([]);
-          const loading = ref(false);
-          const submitted = ref(false);
-          const vueLoadError = ref(false);
-          
-          const fileUrls = reactive({
-            id_card_front: '', id_card_back: '', license_front: '', license_back: '',
-            front_photo: '', bank_proof: '', verification_video: ''
-          });
-          
-          const uploadStatus = reactive({
-            id_card_front: { text: '', class: '' },
-            id_card_back: { text: '', class: '' },
-            license_front: { text: '', class: '' },
-            license_back: { text: '', class: '' },
-            front_photo: { text: '', class: '' },
-            bank_proof: { text: '', class: '' },
-            verification_video: { text: '', class: '' }
-          });
-
-          const hasUploading = computed(() => {
-            return Object.values(uploadStatus).some(s => s.class === 'uploading');
-          });
-
-          onMounted(async () => {
-            try {
-              const { data, error } = await supabase.from('stations').select('id, name').eq('status', 'ACTIVE');
-              if (error) throw error;
-              stations.value = data;
-            } catch (err) {
-              console.error('加載站點失敗:', err);
-              vueLoadError.value = true;
-            }
-          });
-
-          const handleFileUpload = async (event, key) => {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const maxSize = key === 'verification_video' ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
-            if (file.size > maxSize) {
-              uploadStatus[key] = { text: `❌ 文件太大 (最大 ${(maxSize/1024/1024)}MB)`, class: 'error' };
-              return;
-            }
-
-            uploadStatus[key] = { text: '⏳ 上傳中，請耐心等待...', class: 'uploading' };
-            fileUrls[key] = '';
-
-            try {
-              const fileName = `${Date.now()}_${key}_${file.name.replace(/\s+/g, '_')}`;
-              const { data, error } = await supabase.storage
-                .from('rider-files')
-                .upload(fileName, file, { cacheControl: '3600', upsert: false });
-
-              if (error) throw error;
-              
-              const { data: { publicUrl } } = supabase.storage.from('rider-files').getPublicUrl(fileName);
-              fileUrls[key] = publicUrl;
-              uploadStatus[key] = { text: '✅ 上傳成功', class: 'success' };
-              
-            } catch (error) {
-              console.error(`上傳 ${key} 失敗:`, error);
-              uploadStatus[key] = { text: '❌ 上傳失敗: ' + error.message, class: 'error' };
-            }
-          };
-
-          const submitForm = async () => {
-            if (!/^6\d{7}$/.test(form.phone)) { alert('電話格式錯誤'); return; }
-
-            const requiredFiles = ['id_card_front', 'id_card_back', 'license_front', 'license_back', 'front_photo', 'bank_proof', 'verification_video'];
-            for (let key of requiredFiles) {
-              if (!fileUrls[key]) {
-                alert(`請確保所有文件已上傳成功（顯示綠色對勾）`);
-                return;
-              }
-            }
-
-            loading.value = true;
-            try {
-              const { error } = await supabase.from('riders').insert([{
-                name: form.name,
-                phone: form.phone,
-                station: form.station,
-                work_type: form.work_type,
-                id_number: form.id_number,
-                vehicle_plate: form.vehicle_plate,
-                bank_account: '見銀行證明照片',
-                status: 'PENDING',
-                id_card_front_url: fileUrls.id_card_front,
-                id_card_back_url: fileUrls.id_card_back,
-                license_front_url: fileUrls.license_front,
-                license_back_url: fileUrls.license_back,
-                front_photo_url: fileUrls.front_photo,
-                bank_proof_url: fileUrls.bank_proof,
-                verification_video_url: fileUrls.verification_video
-              }]);
-
-              if (error) throw error;
-              submitted.value = true;
-            } catch (err) {
-              alert('提交失敗：' + err.message);
-            } finally {
-              loading.value = false;
-            }
-          };
-
-          return { form, stations, loading, submitted, uploadStatus, hasUploading, submitForm, handleFileUpload, vueLoadError };
-        }
-      }).mount('#app');
-    });
+    }).mount('#app');
   </script>
 </body>
 </html>
