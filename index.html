@@ -42,7 +42,7 @@
         <div class="form-group">
           <label>現職站點 *</label>
           <select v-model="form.station" required>
-            <option value="">請選擇 (如果空白請刷新頁面)</option>
+            <option value="">請選擇 </option>
             <option v-for="s in stations" :key="s.id" :value="s.name">{{ s.name }}</option>
           </select>
           <div v-if="stations.length === 0" style="color:red; font-size:12px;">️ 站點加載失敗，請檢查網絡或聯繫管理員</div>
