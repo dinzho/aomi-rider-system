@@ -184,11 +184,26 @@
         };
 
         const rejectRider = async (r) => {
-          const reason = prompt(`駁回 ${r.name} 的原因：`);
-          if (!reason) return;
-          await sb.from('riders').update({ status: 'REJECTED', reject_reason: reason }).eq('id', r.id);
-          r.status = 'REJECTED'; r.reject_reason = reason;
-        };
+  const reason = prompt(`駁回 ${r.name} 的原因：`);
+  if (reason === null) return; // 如果點取消，直接結束
+  
+  // 嘗試更新數據庫
+  const { error } = await sb.from('riders').update({ 
+    status: 'REJECTED', 
+    reject_reason: reason 
+  }).eq('id', r.id);
+  
+  // 關鍵：檢查有沒有報錯
+  if (error) {
+    alert('駁回失敗：' + error.message);
+    return; 
+  }
+  
+  // 只有數據庫成功了，才更新前端顯示
+  r.status = 'REJECTED'; 
+  r.reject_reason = reason;
+  alert('駁回成功！');
+};
 
         const showLink = (r) => {
           linkRider.value = r;
