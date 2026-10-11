@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理員後台 - 專送騎手審核</title>
+  <script src="https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2.39.7"></script>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+    .header { background: #001529; color: #fff; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+    th { background: #fafafa; font-weight: bold; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .badge-pending { background: #fff7e6; color: #fa8c16; }
+    .badge-approved { background: #f6ffed; color: #52c41a; }
+    .badge-rejected { background: #fff1f0; color: #f5222d; }
+    .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 5px; color: #fff; }
+    .btn-view { background: #1890ff; }
+    .btn-approve { background: #52c41a; }
+    .btn-reject { background: #f5222d; }
+    .btn-exam { background: #fa8c16; }
+    .btn-account { background: #722ed1; }
+    .modal-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-content { background: #fff; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; border-radius: 8px; padding: 20px; position: relative; }
+    .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #999; }
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; }
+    .detail-item { border: 1px solid #eee; padding: 10px; border-radius: 4px; text-align: center; }
+    .detail-item img, .detail-item video { max-width: 100%; border-radius: 4px; }
+    .link-box { background: #f6ffed; border: 1px solid #b7eb8f; padding: 10px; border-radius: 4px; word-break: break-all; margin-top: 5px; font-size: 12px; color: #52c41a; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div v-if="!isAuthenticated" style="max-width: 400px; margin: 100px auto; text-align: center;">
+      <h2>管理員登入</h2>
+      <input type="password" v-model="password" placeholder="請輸入管理員密碼" style="padding: 10px; width: 80%; margin-bottom: 10px;">
+      <br>
+      <button @click="checkPassword" class="btn btn-view" style="font-size: 16px; padding: 10px 30px;">登入</button>
+      <p v-if="loginError" style="color: red;">密碼錯誤</p>
+    </div>
+
+    <div v-else>
+      <div class="header">
+        <h1>專送騎手審核後台</h1>
+        <button @click="logout" class="btn" style="background: rgba(255,255,255,0.2);">登出</button>
+      </div>
+
+      <div class="container">
+        <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+          <button @click="filter = 'ALL'" class="btn" :style="{background: filter==='ALL'?'#1890ff':'#eee', color: filter==='ALL'?'#fff':'#333'}">全部</button>
+          <button @click="filter = 'PENDING'" class="btn" :style="{background: filter==='PENDING'?'#fa8c16':'#eee', color: filter==='PENDING'?'#fff':'#333'}">待審核</button>
+          <button @click="filter = 'APPROVED'" class="btn" :style="{background: filter==='APPROVED'?'#52c41a':'#eee', color: filter==='APPROVED'?'#fff':'#333'}">已通過</button>
+          <button @click="loadData" class="btn" style="background: #fff; color: #333; border: 1px solid #ddd; margin-left: auto;">🔄 刷新</button>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>時間</th><th>姓名</th><th>電話</th><th>站點</th><th>狀態</th><th>考試</th><th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="rider in filteredRiders" :key="rider.id">
+              <td>{{ formatDate(rider.created_at) }}</td>
+              <td>{{ rider.name }}</td>
+              <td>{{ rider.phone }}</td>
+              <td>{{ rider.station }}</td>
+              <td><span class="badge" :class="'badge-' + rider.status.toLowerCase()">{{ statusText(rider.status) }}</span></td>
+              <td>{{ rider.exam_passed ? '✅ 已過' : '❌ 未考' }}</td>
+              <td>
+                <button class="btn btn-view" @click="viewRider(rider)">詳情</button>
+                <button v-if="rider.status === 'PENDING'" class="btn btn-approve" @click="approveRider(rider)">通過</button>
+                <button v-if="rider.status === 'PENDING'" class="btn btn-reject" @click="rejectRider(rider)">駁回</button>
+                <button v-if="rider.status === 'APPROVED' && rider.training_token" class="btn btn-exam" @click="showLink(rider)">培訓連結</button>
+                <button v-if="rider.status === 'APPROVED' && !rider.exam_passed" class="btn btn-exam" @click="markExamPassed(rider)">標記考試通過</button>
+                <button v-if="rider.exam_passed && !rider.account_opened" class="btn btn-account" @click="openAccount(rider)">開通帳號</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 詳情彈窗 -->
+      <div v-if="selectedRider" class="modal-mask" @click.self="selectedRider = null">
+        <div class="modal-content">
+          <span class="close-btn" @click="selectedRider = null">✕</span>
+          <h2>{{ selectedRider.name }} 的報名詳情</h2>
+          <p><strong>電話：</strong>{{ selectedRider.phone }} | <strong>身份證：</strong>{{ selectedRider.id_number }}</p>
+          <p><strong>銀行帳號：</strong>{{ selectedRider.bank_account }}</p>
+          <p v-if="selectedRider.reject_reason" style="color:red"><strong>回原因：</strong>{{ selectedRider.reject_reason }}</p>
+          
+          <h3>證件與核身視頻</h3>
+          <div class="detail-grid">
+            <div class="detail-item" v-if="selectedRider.id_card_front_url"><span>身份證正面</span><br><a :href="selectedRider.id_card_front_url" target="_blank"><img :src="selectedRider.id_card_front_url"></a></div>
+            <div class="detail-item" v-if="selectedRider.id_card_back_url"><span>身份證背面</span><br><a :href="selectedRider.id_card_back_url" target="_blank"><img :src="selectedRider.id_card_back_url"></a></div>
+            <div class="detail-item" v-if="selectedRider.license_front_url"><span>駕照正面</span><br><a :href="selectedRider.license_front_url" target="_blank"><img :src="selectedRider.license_front_url"></a></div>
+            <div class="detail-item" v-if="selectedRider.license_back_url"><span>駕照背面</span><br><a :href="selectedRider.license_back_url" target="_blank"><img :src="selectedRider.license_back_url"></a></div>
+            <div class="detail-item" v-if="selectedRider.front_photo_url"><span>個人照</span><br><a :href="selectedRider.front_photo_url" target="_blank"><img :src="selectedRider.front_photo_url"></a></div>
+            <div class="detail-item" v-if="selectedRider.bank_proof_url"><span>銀行證明</span><br><a :href="selectedRider.bank_proof_url" target="_blank"><img :src="selectedRider.bank_proof_url"></a></div>
+            <div class="detail-item" v-if="selectedRider.verification_video_url" style="grid-column: span 2;">
+              <span>核身視頻 (點擊播放)</span><br>
+              <video controls :src="selectedRider.verification_video_url"></video>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 連結彈窗 -->
+      <div v-if="linkRider" class="modal-mask" @click.self="linkRider = null">
+        <div class="modal-content" style="max-width: 500px; text-align: center;">
+          <span class="close-btn" @click="linkRider = null">✕</span>
+          <h3>專屬培訓連結</h3>
+          <p>請複製以下連結發送給 {{ linkRider.name }}，或生成 QR Code：</p>
+          <div class="link-box">{{ trainingUrl }}</div>
+          <p style="font-size:12px; color:#666; margin-top:10px;">騎手點擊後需先進行現場人臉核身，通過後將跳轉至騰訊問卷考試。</p>
+          <button class="btn btn-view" @click="copyLink" style="margin-top:15px;">複製連結</button>
+        </div>
+      </div>
+      
+      <!-- 開通帳號彈窗 -->
+      <div v-if="accountRider" class="modal-mask" @click.self="accountRider = null">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+          <span class="close-btn" @click="accountRider = null">✕</span>
+          <h3 style="color:#722ed1">帳號已開通！</h3>
+          <p>請讓騎手掃描下方二維碼加入企業微信群：</p>
+          <!-- 替換為你的入群 QR Code -->
+          <img src="https://via.placeholder.com/200?text=入群QR" style="max-width:200px; margin:10px 0;">
+          <p style="font-size:12px; color:#666;">入群後請提醒修改暱稱：姓名+電話</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    if (typeof Vue === 'undefined' || typeof supabase === 'undefined') { alert('庫加載失敗，請刷新'); throw new Error('Libs failed'); }
+    const { createApp, reactive, ref, computed, onMounted } = Vue;
+    
+    const SUPABASE_URL = 'https://sxeumofpvoicgdfumozn.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZXVtb2Zwdm9pY2dkZnVtb3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MjI0MDEsImV4cCI6MjEwNzE5ODQwMX0.BMSIbaFzJkvwDzomjKqIdcfDBLNqntYvTHyBiCnTphw';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const ADMIN_PASSWORD = 'admin123'; // 可修改
+
+    createApp({
+      setup() {
+        const isAuthenticated = ref(false);
+        const password = ref('');
+        const loginError = ref(false);
+        const riders = ref([]);
+        const filter = ref('ALL');
+        const selectedRider = ref(null);
+        const linkRider = ref(null);
+        const accountRider = ref(null);
+        const trainingUrl = ref('');
+
+        const checkPassword = () => { if (password.value === ADMIN_PASSWORD) { isAuthenticated.value = true; loadData(); } else { loginError.value = true; } };
+        const logout = () => { isAuthenticated.value = false; riders.value = []; };
+
+        const loadData = async () => {
+          const { data, error } = await sb.from('riders').select('*').order('created_at', { ascending: false });
+          if (error) alert('加載失敗: ' + error.message);
+          else riders.value = data;
+        };
+
+        const filteredRiders = computed(() => {
+          if (filter.value === 'ALL') return riders.value;
+          return riders.value.filter(r => r.status === filter.value);
+        });
+
+        const statusText = (s) => ({ 'PENDING': '待審核', 'APPROVED': '已通過', 'REJECTED': '已駁回' }[s] || s);
+        const formatDate = (d) => d ? new Date(d).toLocaleString('zh-TW', {hour12:false}) : '';
+
+        const viewRider = (r) => selectedRider.value = r;
+
+        const approveRider = async (r) => {
+          if (!confirm(`通過 ${r.name} 的報名？`)) return;
+          const token = 'TR-' + Math.random().toString(36).substr(2, 8).toUpperCase();
+          const { error } = await sb.from('riders').update({ status: 'APPROVED', training_token: token }).eq('id', r.id);
+          if (error) alert('錯誤: ' + error.message);
+          else { r.status = 'APPROVED'; r.training_token = token; alert('通過成功！請點擊「培訓連結」發送給騎手。'); }
+        };
+
+        const rejectRider = async (r) => {
+          const reason = prompt(`駁回 ${r.name} 的原因：`);
+          if (!reason) return;
+          await sb.from('riders').update({ status: 'REJECTED', reject_reason: reason }).eq('id', r.id);
+          r.status = 'REJECTED'; r.reject_reason = reason;
+        };
+
+        const showLink = (r) => {
+          linkRider.value = r;
+          // 這裡假設你的 training.html 在根目錄
+          trainingUrl.value = `${window.location.origin.replace('admin', '')}training.html?token=${r.training_token}`;
+        };
+
+        const copyLink = () => {
+          navigator.clipboard.writeText(trainingUrl.value);
+          alert('連結已複製！');
+        };
+
+        const markExamPassed = async (r) => {
+          if (!confirm(`確認 ${r.name} 已通過騰訊問卷考試？`)) return;
+          await sb.from('riders').update({ exam_passed: true }).eq('id', r.id);
+          r.exam_passed = true;
+          alert('已標記為考試通過！現在可以開通帳號了。');
+        };
+
+        const openAccount = (r) => {
+          accountRider.value = r;
+          // 這裡可以加自動更新數據庫的邏輯
+          sb.from('riders').update({ account_opened: true }).eq('id', r.id);
+        };
+
+        return { isAuthenticated, password, loginError, checkPassword, logout, riders, filter, filteredRiders, loadData, statusText, formatDate, selectedRider, viewRider, approveRider, rejectRider, linkRider, trainingUrl, showLink, copyLink, markExamPassed, accountRider, openAccount };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
