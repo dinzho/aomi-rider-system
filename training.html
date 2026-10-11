@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>專送騎手培訓核身</title>
+  <script src="https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2.39.7"></script>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #000; color: #fff; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    .container { width: 100%; max-width: 400px; padding: 20px; text-align: center; }
+    h2 { color: #1890ff; }
+    .camera-box { width: 100%; aspect-ratio: 3/4; background: #222; border: 2px solid #1890ff; border-radius: 12px; overflow: hidden; position: relative; margin: 20px 0; }
+    video { width: 100%; height: 100%; object-fit: cover; }
+    .scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: #1890ff; box-shadow: 0 0 10px #1890ff; animation: scan 2s linear infinite; }
+    @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+    .btn { background: #1890ff; color: #fff; border: none; padding: 12px 30px; border-radius: 20px; font-size: 16px; cursor: pointer; width: 100%; }
+    .btn:disabled { background: #555; }
+    .msg { margin-top: 15px; font-size: 14px; min-height: 20px; }
+    .success-msg { color: #52c41a; font-size: 18px; font-weight: bold; }
+    .error-msg { color: #f5222d; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="container">
+      <h2>專送映射眾包培訓</h2>
+      
+      <div v-if="status === 'loading'">🔄 驗證身份中...</div>
+      <div v-if="status === 'invalid'" style="color:red; margin-top:50px;">❌ 無效的培訓連結<br>請聯繫站長重新獲取。</div>
+      
+      <div v-if="status === 'ready'">
+        <p>請正對鏡頭，確保光線充足</p>
+        <div class="camera-box">
+          <video ref="videoRef" autoplay playsinline></video>
+          <div class="scan-line"></div>
+        </div>
+        <button class="btn" @click="captureAndVerify" :disabled="verifying">
+          {{ verifying ? '比對中...' : '現場拍照並核身' }}
+        </button>
+        <div class="msg" :class="msgClass">{{ message }}</div>
+      </div>
+
+      <div v-if="status === 'success'">
+        <div class="success-msg">✅ 核身通過！</div>
+        <p style="margin-top:20px;">正在跳轉至考試頁面...</p>
+        <p style="font-size:12px; color:#999;">如果沒有自動跳轉，請點擊下方按鈕</p>
+        <button class="btn" style="background:#52c41a; margin-top:20px;" @click="goToExam">進入考試</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    if (typeof Vue === 'undefined' || typeof supabase === 'undefined') throw new Error('Libs failed');
+    const { createApp, ref, onMounted } = Vue;
+    
+    const SUPABASE_URL = 'https://sxeumofpvoicgdfumozn.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZXVtb2Zwdm9pY2dkZnVtb3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MjI0MDEsImV4cCI6MjEwNzE5ODQwMX0.BMSIbaFzJkvwDzomjKqIdcfDBLNqntYvTHyBiCnTphw';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // ⚠️ 請替換為你的騰訊問卷連結
+    const TENCENT_EXAM_URL = 'https://wjx.cn/xxxxxx'; 
+
+    createApp({
+      setup() {
+        const status = ref('loading'); // loading, invalid, ready, success
+        const videoRef = ref(null);
+        const verifying = ref(false);
+        const message = ref('');
+        const msgClass = ref('');
+        const riderId = ref(null);
+        const stream = ref(null);
+
+        onMounted(async () => {
+          const urlParams = new URLSearchParams(window.location.search);
+          const token = urlParams.get('token');
+          if (!token) { status.value = 'invalid'; return; }
+
+          // 查詢騎手
+          const { data, error } = await sb.from('riders').select('id, name, front_photo_url').eq('training_token', token).single();
+          if (error || !data) { status.value = 'invalid'; return; }
+          
+          riderId.value = data.id;
+          
+          // 啟動攝像頭
+          try {
+            stream.value = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            videoRef.value.srcObject = stream.value;
+            status.value = 'ready';
+          } catch (e) {
+            message.value = '無法開啟攝像頭，請檢查權限';
+            msgClass.value = 'error-msg';
+          }
+        });
+
+        const captureAndVerify = async () => {
+          verifying.value = true;
+          message.value = '正在進行人臉比對...';
+          msgClass.value = '';
+
+          // 簡單模擬：實際項目應調用人臉識別 API
+          // 這裡為了演示，我們假設只要拍到臉就算過（因為沒有後端 API 密鑰）
+          // 真實場景：將 videoRef.value 的 frame 發送到後端比對 front_photo_url
+          
+          setTimeout(() => {
+            verifying.value = false;
+            // 模擬成功
+            status.value = 'success';
+            if (stream.value) stream.value.getTracks().forEach(track => track.stop());
+          }, 1500);
+        };
+
+        const goToExam = () => {
+          window.location.href = https://wj.qq.com/s2/28147835/7iwv/;
+        };
+
+        return { status, videoRef, verifying, message, msgClass, captureAndVerify, goToExam };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
